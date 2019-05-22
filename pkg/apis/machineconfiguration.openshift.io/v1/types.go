@@ -97,7 +97,7 @@ type ControllerConfigSpec struct {
 
 	// infra holds the infrastructure details
 	// TODO this makes platform redundant as everything is contained inside Infra.Status
-	Infra *configv1.Infrastructure
+	Infra *configv1.Infrastructure `json:"infra"`
 }
 
 // ControllerConfigStatus is the status for ControllerConfig

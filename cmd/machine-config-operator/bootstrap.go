@@ -19,23 +19,28 @@ var (
 	}
 
 	bootstrapOpts struct {
-		cloudConfigFile      string
-		configFile           string
-		destinationDir       string
-		etcdCAFile           string
-		etcdImage            string
-		etcdMetricCAFile     string
-		imagesConfigMapFile  string
-		infraConfigFile      string
-		infraImage           string
-		kubeCAFile           string
-		kubeClientAgentImage string
-		mcoImage             string
-		networkConfigFile    string
-		oscontentImage       string
-		pullSecretFile       string
-		rootCAFile           string
-		proxyConfigFile      string
+		cloudConfigFile          string
+		configFile               string
+		destinationDir           string
+		etcdCAFile               string
+		etcdImage                string
+		etcdMetricCAFile         string
+		imagesConfigMapFile      string
+		infraConfigFile          string
+		infraImage               string
+		keepalivedImage          string
+		corednsImage             string
+		mdnsPublisherImage       string
+		haproxyImage             string
+		baremetalRuntimeCfgImage string
+		kubeCAFile               string
+		kubeClientAgentImage     string
+		mcoImage                 string
+		networkConfigFile        string
+		oscontentImage           string
+		pullSecretFile           string
+		rootCAFile               string
+		proxyConfigFile          string
 	}
 )
 
@@ -64,6 +69,11 @@ func init() {
 	bootstrapCmd.PersistentFlags().StringVar(&bootstrapOpts.networkConfigFile, "network-config-file", "/assets/manifests/cluster-network-02-config.yml", "File containing network.config.openshift.io manifest.")
 	bootstrapCmd.PersistentFlags().StringVar(&bootstrapOpts.cloudConfigFile, "cloud-config-file", "", "File containing the config map that contains the cloud config for cloudprovider.")
 	bootstrapCmd.PersistentFlags().StringVar(&bootstrapOpts.proxyConfigFile, "proxy-config-file", "/assets/manifests/cluster-proxy-01-config.yaml", "File containing proxy.config.openshift.io manifest.")
+	bootstrapCmd.PersistentFlags().StringVar(&bootstrapOpts.keepalivedImage, "keepalived-image", "registry.svc.ci.openshift.org/openshift:keepalived-ipfailover", "Image for Keepalived.")
+	bootstrapCmd.PersistentFlags().StringVar(&bootstrapOpts.corednsImage, "coredns-image", "registry.svc.ci.openshift.org/openshift:coredns", "Image for CoreDNS.")
+	bootstrapCmd.PersistentFlags().StringVar(&bootstrapOpts.mdnsPublisherImage, "mdns-publisher-image", "registry.svc.ci.openshift.org/openshift:mdns-publisher", "Image for mdns-publisher.")
+	bootstrapCmd.PersistentFlags().StringVar(&bootstrapOpts.haproxyImage, "haproxy-image", "registry.svc.ci.openshift.org/openshift:haproxy-router", "Image for haproxy.")
+	bootstrapCmd.PersistentFlags().StringVar(&bootstrapOpts.baremetalRuntimeCfgImage, "baremetal-runtimecfg", "registry.svc.ci.oppenshift.org/openshift:baremetal-runtimecfg", "Image for baremetal-runtimecfg.")
 }
 
 func runBootstrapCmd(cmd *cobra.Command, args []string) {
@@ -79,9 +89,14 @@ func runBootstrapCmd(cmd *cobra.Command, args []string) {
 			MachineOSContent:      bootstrapOpts.oscontentImage,
 		},
 		ControllerConfigImages: operator.ControllerConfigImages{
-			Etcd:            bootstrapOpts.etcdImage,
-			InfraImage:      bootstrapOpts.infraImage,
-			KubeClientAgent: bootstrapOpts.kubeClientAgentImage,
+			Etcd:                bootstrapOpts.etcdImage,
+			InfraImage:          bootstrapOpts.infraImage,
+			KubeClientAgent:     bootstrapOpts.kubeClientAgentImage,
+			Keepalived:          bootstrapOpts.keepalivedImage,
+			Coredns:             bootstrapOpts.corednsImage,
+			MdnsPublisher:       bootstrapOpts.mdnsPublisherImage,
+			Haproxy:             bootstrapOpts.haproxyImage,
+			BaremetalRuntimeCfg: bootstrapOpts.baremetalRuntimeCfgImage,
 		},
 	}
 

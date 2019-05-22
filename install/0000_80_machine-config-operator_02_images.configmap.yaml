@@ -9,5 +9,10 @@ data:
       "machineConfigOperator": "registry.svc.ci.openshift.org/openshift:machine-config-operator",
       "etcd": "registry.svc.ci.openshift.org/openshift:etcd",
       "infraImage": "registry.svc.ci.openshift.org/openshift:pod",
-      "kubeClientAgentImage": "registry.svc.ci.openshift.org/openshift:kube-client-agent"
+      "kubeClientAgentImage": "registry.svc.ci.openshift.org/openshift:kube-client-agent",
+      "keepalived": "registry.svc.ci.openshift.org/openshift:keepalived-ipfailover",
+      "coredns": "registry.svc.ci.openshift.org/openshift:coredns",
+      "mdns-publisher": "registry.svc.ci.openshift.org/openshift:mdns-publisher",
+      "haproxy-router": "registry.svc.ci.openshift.org/openshift:haproxy-router",
+      "baremetal-runtimecfg": "registry.svc.ci.openshift.org/openshift:baremetal-runtimecfg"
     }

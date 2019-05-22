@@ -20,7 +20,12 @@ type RenderConfigImages struct {
 
 // ControllerConfigImages are image names used to render templates under ./templates/
 type ControllerConfigImages struct {
-	Etcd            string `json:"etcd"`
-	InfraImage      string `json:"infraImage"`
-	KubeClientAgent string `json:"kubeClientAgentImage"`
+	Etcd                string `json:"etcd"`
+	InfraImage          string `json:"infraImage"`
+	KubeClientAgent     string `json:"kubeClientAgentImage"`
+	Keepalived          string `json:"keepalived"`
+	Coredns             string `json:"coredns"`
+	MdnsPublisher       string `json:"mdnsPublisher"`
+	Haproxy             string `json:"haproxy"`
+	BaremetalRuntimeCfg string `json:"baremetalRuntimeCfg"`
 }

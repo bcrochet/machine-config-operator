@@ -1,0 +1,51 @@
+filesystem: "root"
+mode: 0755
+path: "/etc/NetworkManager/dispatcher.d/pre-up.d/dns-vip-prepender-worker"
+contents:
+  inline: |
+    #!/bin/bash
+    
+    IFACE=$1
+    STATUS=$2
+    
+    case "$STATUS" in
+        pre-up)
+        logger -s "NM dns-vip-prepender-worker triggered by pre-upping ${1}."
+        CLUSTER_DOMAIN="{{ .EtcdDiscoveryDomain }}"
+        if ! HOST_QUERY="$(host ns1.${CLUSTER_DOMAIN})" ; then
+            logger -s "NM dns-vip-prepender: nameserver could not be resolved, exiting"
+            exit 0
+        fi
+        DNS_VIP=$(echo "${HOST_QUERY}" | awk '{print $NF}')
+        IFACE_CIDRS="$(ip addr show | grep -v "scope host" | grep -Po 'inet \K[\d.]+/[\d.]+' | xargs)"
+        SUBNET_CIDR="$(/usr/local/bin/get_vip_subnet_cidr "$DNS_VIP" "$IFACE_CIDRS")"
+        WORKER_BM_IP="$(ip -o addr show to "$SUBNET_CIDR" | awk '{print $4}' | awk -F/ '{print $1}')"
+        set +e
+        if [[ -n $WORKER_BM_IP ]]; then
+            logger -s "NM dns-vip-prepender-worker: Checking if worker node IP is the first entry in resolv.conf"
+            if grep nameserver /etc/resolv.conf | head -n 1 | grep -q "$WORKER_BM_IP" ; then
+                logger -s "NM dns-vip-prepender-worker: worker node IP already the first entry in resolv.conf"
+                exit 0
+            else
+                export WORKER_BM_IP
+
+                logger -s "NM dns-vip-prepender-worker: Setting dhclient to prepend DNS VIP in resolv.conf"
+                envsubst < /etc/dhcp/dhclient.conf.template | tee /etc/dhcp/dhclient.conf
+
+                logger -s "NM dns-vip-prepender-worker: Looking for 'search $CLUSTER_DOMAIN' in /etc/resolv.conf to place 'nameserver $WORKER_BM_IP'"
+                sed -i "/^search .*$/a nameserver $WORKER_BM_IP" /etc/resolv.conf
+            fi
+        fi
+        ;;
+        down)
+        logger -s "NM dns-vip-prepender-worker triggered by downing $IFACE"
+        ;;
+        up)
+        logger -s "NM dns-vip-prepender-worker triggered by upping $IFACE"
+        ;;
+        post-down)
+        logger -s "NM dns-vip-prepender-worker triggered by post-downing $IFACE"
+        ;;
+        *)
+        ;;
+    esac
