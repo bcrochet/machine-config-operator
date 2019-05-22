@@ -35,6 +35,9 @@ func TestCloudProvider(t *testing.T) {
 		platform: "libvirt",
 		res:      "",
 	}, {
+		platform: "baremetal",
+		res:      "",
+	}, {
 		platform: "none",
 		res:      "",
 	}}
@@ -229,6 +232,7 @@ var (
 		"aws":       "./test_data/controller_config_aws.yaml",
 		"openstack": "./test_data/controller_config_openstack.yaml",
 		"libvirt":   "./test_data/controller_config_libvirt.yaml",
+		"baremetal": "./test_data/controller_config_baremetal.yaml",
 		"none":      "./test_data/controller_config_none.yaml",
 		"vsphere":   "./test_data/controller_config_vsphere.yaml",
 	}

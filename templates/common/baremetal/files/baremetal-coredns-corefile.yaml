@@ -1,0 +1,18 @@
+filesystem: "root"
+mode: 0644
+path: "/etc/kubernetes/static-pod-resources/coredns/Corefile.template"
+contents:
+  inline: |
+    . {
+        errors
+        health
+        mdns $DOMAIN 0 $NAME
+        forward . /etc/coredns/resolv.conf
+        cache 30
+        reload
+        hosts /etc/coredns/api-int.hosts $DOMAIN {
+            $API_VIP api-int.$DOMAIN
+            fallthrough
+        }
+    }
+    

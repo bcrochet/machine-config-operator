@@ -17,11 +17,11 @@ import (
 )
 
 type renderConfig struct {
-	TargetNamespace  string
-	Version          string
-	ControllerConfig mcfgv1.ControllerConfigSpec
-	APIServerURL     string
-	Images           Images
+	TargetNamespace        string
+	Version                string
+	ControllerConfig       mcfgv1.ControllerConfigSpec
+	APIServerURL           string
+	Images                 Images
 	KubeAPIServerServingCA string
 }
 
@@ -79,6 +79,8 @@ func createDiscoveredControllerConfigSpec(infra *configv1.Infrastructure, networ
 		platform = "libvirt"
 	case configv1.VSpherePlatformType:
 		platform = "vsphere"
+	case configv1.BareMetalPlatformType:
+		platform = "baremetal"
 	}
 
 	return &mcfgv1.ControllerConfigSpec{
