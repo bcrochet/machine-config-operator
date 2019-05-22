@@ -1,0 +1,49 @@
+filesystem: "root"
+mode: 0755
+path: "/etc/NetworkManager/dispatcher.d/pre-up.d/dns-vip-prepender"
+contents:
+  inline: |
+    #!/bin/bash
+    
+    IFACE=$1
+    STATUS=$2
+    
+    case "$STATUS" in
+        pre-up)
+        logger -s "NM dns-vip-prepender triggered by pre-upping ${1}."
+        CLUSTER_DOMAIN="$(/usr/local/bin/clusterinfo DOMAIN)"
+        if ! HOST_QUERY="$(host api.${CLUSTER_DOMAIN})" ; then
+            logger -s "NM dns-vip-prepender: nameserver could not be resolved, exiting"
+            exit 0
+        fi
+        API_VIP=$(echo "${HOST_QUERY}" | awk '{print $NF}')
+        set +e
+        if [[ -n $API_VIP ]]; then
+            logger -s "NM dns-vip-prepender: Checking if API VIP is the first entry in resolv.conf"
+            if grep nameserver /etc/resolv.conf | head -n 1 | grep -q "$API_VIP" ; then
+                logger -s "NM dns-vip-prepender: API VIP already the first entry in resolv.conf"
+                exit 0
+            else
+                export API_VIP
+    
+                logger -s "NM dns-vip-prepender: Setting dhclient to prepend API VIP in resolv.conf"
+                envsubst < /etc/dhcp/dhclient.conf.template | tee /etc/dhcp/dhclient.conf
+    
+                logger -s "NM dns-vip-prepender: Looking for 'search $CLUSTER_DOMAIN' in /etc/resolv.conf to place 'nameserver $API_VIP'"
+                sed -i "/^search .*$/a nameserver $API_VIP" /etc/resolv.conf
+            fi
+        fi
+        ;;
+        down)
+        logger -s "NM dns-vip-prepender triggered by downing $IFACE"
+        ;;
+        up)
+        logger -s "NM dns-vip-prepender triggered by upping $IFACE"
+        ;;
+        post-down)
+        logger -s "NM dns-vip-prepender triggered by post-downing $IFACE"
+        ;;
+        *)
+        ;;
+    esac
+    
