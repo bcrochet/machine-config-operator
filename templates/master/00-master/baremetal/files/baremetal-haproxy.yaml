@@ -112,6 +112,16 @@ contents:
           mountPath: "/etc/haproxy"
         - name: run-dir
           mountPath: "/var/run/haproxy"
+        livenessProbe:
+          initialDelaySeconds: 10
+          httpGet:
+            path: /healthz
+            port: 1936
+        readinessProbe:
+          initialDelaySeconds: 10
+          httpGet:
+            path: /healthz
+            port: 1936
         terminationMessagePolicy: FallbackToLogsOnError
         imagePullPolicy: IfNotPresent
       - name: haproxy-monitor

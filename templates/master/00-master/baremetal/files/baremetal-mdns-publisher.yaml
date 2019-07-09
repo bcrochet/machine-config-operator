@@ -96,6 +96,12 @@ contents:
         volumeMounts:
         - name: conf-dir
           mountPath: "/etc/mdns"
+        livenessProbe:
+          exec:
+            command:
+            - pgrep
+            - mdns-publisher
+          initialDelaySeconds: 10
         terminationMessagePolicy: FallbackToLogsOnError
         imagePullPolicy: IfNotPresent
       hostNetwork: true

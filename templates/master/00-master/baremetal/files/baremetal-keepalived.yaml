@@ -115,6 +115,12 @@ contents:
         volumeMounts:
         - name: conf-dir
           mountPath: "/etc/keepalived"
+        livenessProbe:
+          exec:
+            command:
+            - pgrep
+            - keepalived
+          initialDelaySeconds: 10
         terminationMessagePolicy: FallbackToLogsOnError
         imagePullPolicy: IfNotPresent
       hostNetwork: true
