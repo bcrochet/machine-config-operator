@@ -24,6 +24,7 @@ type renderConfig struct {
 	APIServerURL           string
 	Images                 *RenderConfigImages
 	KubeAPIServerServingCA string
+	Infra                  configv1.Infrastructure
 }
 
 func renderAsset(config *renderConfig, path string) ([]byte, error) {
@@ -88,6 +89,7 @@ func createDiscoveredControllerConfigSpec(infra *configv1.Infrastructure, networ
 		CloudProviderConfig: "",
 		EtcdDiscoveryDomain: infra.Status.EtcdDiscoveryDomain,
 		Platform:            platform,
+		Infra:               infra,
 	}
 
 	if proxy != nil {
