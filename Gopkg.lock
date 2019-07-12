@@ -431,7 +431,7 @@
 
 [[projects]]
   branch = "master"
-  digest = "1:3d9aff47bf9bdd8dade83f2dcf3aaffbecbb1d886a5b73b7c4cf604545f286dc"
+  digest = "1:efccb92edb1f6f7d2b761f4073eea5e263b802a6f7309bee928639fb1c5aad4e"
   name = "github.com/openshift/api"
   packages = [
     "config/v1",
@@ -439,7 +439,7 @@
     "operator/v1alpha1",
   ]
   pruneopts = "NUT"
-  revision = "35c8395fe70d56cb00077f4b89bcf1567af9a79c"
+  revision = "930b75f20479480ef231e474e7257ffc3b431a02"
 
 [[projects]]
   branch = "master"
