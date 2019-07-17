@@ -30,32 +30,6 @@ contents:
       - name: chroot-host
         hostPath:
           path: "/"
-      initContainers:
-      - name: render-config
-        image: {{ .Images.baremetalRuntimeCfgImage }}
-        env:
-        - name: api_port
-          value: "6443"
-        - name: stat_port
-          value: "50000"
-        command:
-        - render
-        - "/etc/kubernetes/kubeconfig"
-        - "--api-vip {{ .Infra.Status.PlatformStatus.BareMetal.APIServerInternalIP }}"
-        - "--dns-vip {{ .Infra.Status.PlatformStatus.BareMetal.NodeDNSIP }}"
-        - "--ingress-vip {{ .Infra.Status.PlatformStatus.BareMetal.IngressIP }}"
-        - "/config/haproxy.cfg.template"
-        - "--out-dir"
-        - "/etc/haproxy"
-        resources: {}
-        volumeMounts:
-        - name: kubeconfig
-          mountPath: "/etc/kubernetes/kubeconfig"
-        - name: resource-dir
-          mountPath: "/config"
-        - name: conf-dir
-          mountPath: "/etc/haproxy"
-        imagePullPolicy: IfNotPresent
       containers:
       - name: haproxy
         image: {{.Images.haproxyImage}}
@@ -91,7 +65,6 @@ contents:
           if [ -S "$haproxy_sock" ]; then
               rm "$haproxy_sock"
           fi
-          /usr/sbin/haproxy -W -db -f /etc/haproxy/haproxy.cfg  -p /var/lib/haproxy/run/haproxy.pid &
           socat UNIX-LISTEN:${haproxy_sock},fork system:'bash -c msg_handler'
         volumeMounts:
         - name: conf-dir
@@ -99,60 +72,23 @@ contents:
         - name: run-dir
           mountPath: "/var/run/haproxy"
         livenessProbe:
-          initialDelaySeconds: 10
-          httpGet:
-            path: /healthz
-            port: 1936
-        readinessProbe:
-          initialDelaySeconds: 10
+          initialDelaySeconds: 30
           httpGet:
             path: /healthz
             port: 1936
         terminationMessagePolicy: FallbackToLogsOnError
         imagePullPolicy: IfNotPresent
+
       - name: haproxy-monitor
-        // TODO: This needs serious rework
         securityContext:
           privileged: true
-        image: quay.io/openshift/origin-node:latest
-        env:
-        - name: cfg_path
-          value: "/etc/haproxy/haproxy.cfg"
-        - name: api_port
-          value: "6443"
-        - name: lb_port
-          value: "7443"
-        - name: stat_port
-          value: "50000"
+        image: {{ .Images.baremetalRuntimeCfgImage }}
         command:
-        - "/bin/bash"
-        - "-c"
-        - |
-          #/bin/bash
-          set -ex
-    
-          source /etc/kubernetes/static-pod-resources/clusterrc
-          source /etc/kubernetes/static-pod-resources/utils.sh
-          API_VIP="$(dig +noall +answer "api.${DOMAIN}" | awk '{print $NF}')"
-    
-          trap clean_prerouting_rules SIGINT SIGTERM
-          while true; do
-              sleep 15
-              if has_master_api_lb_topology_changed "$DOMAIN" "$cfg_path"; then
-                  (>&2 echo "Master topology changed. Reconfiguring and hot restarting HAProxy")
-                  generate_cfg \
-                      /etc/kubernetes/static-pod-resources/haproxy.cfg.template \
-                      "$cfg_path" \
-                      "$DOMAIN" \
-                      "$api_port" \
-                      "$stat_port"
-                  echo "reload" | socat /var/run/haproxy/haproxy-master.sock -
-              fi
-              if curl -o /dev/null -kLs "https://0:${lb_port}/healthz"; then
-                  (>&2 echo "API is accessible via LB")
-                  ensure_prerouting_rules "$API_VIP" "$api_port" "$lb_port"
-              fi
-          done
+        - monitor
+        - "/etc/kubernetes/kubeconfig"
+        - "/etc/kubernetes/static-pod-resources/haproxy.cfg.tmpl"
+        - "/etc/haproxy/haproxy.cfg"
+        - "--api-vip {{ .Infra.Status.PlatformStatus.BareMetal.APIServerInternalIP }}"
         volumeMounts:
         - name: conf-dir
           mountPath: "/etc/haproxy"
@@ -162,6 +98,8 @@ contents:
           mountPath: "/etc/kubernetes/static-pod-resources"
         - name: chroot-host
           mountPath: "/host"
+        - name: kubeconfig
+          mountPath: "/etc/kubernetes/kubeconfig"
         terminationMessagePolicy: FallbackToLogsOnError
         imagePullPolicy: IfNotPresent
       hostNetwork: true
