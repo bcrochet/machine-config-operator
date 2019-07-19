@@ -22,42 +22,39 @@ spec:
     hostPath:
       path: "/opt/openshift/manifests"
   initContainers:
-  - name: render-corefile
-    image: quay.io/openshift/origin-node:latest
+  - name: render-config
+    image: {{ .Images.baremetalRuntimeCfgImage }}
     command:
-    - "/bin/bash"
-    - "-c"
-    - |
-      #/bin/bash
-      set -ex
-      API_DNS="$(awk -F[/:] '/apiServerURL/ {print $5}' /opt/openshift/manifests/cluster-infrastructure-02-config.yml)"
-      DOMAIN="${API_DNS#*.}"
-      read -r -d '.' -a CLUSTER_ARR <<< "$DOMAIN"
-      NAME=${CLUSTER_ARR[0]}
-      API_VIP="$(dig +noall +answer "$API_DNS" | awk '{print $NF}')"
-      DNS_VIP="$(dig +noall +answer "ns1.${DOMAIN}" | awk '{print $NF}')"
-      grep -Ev "${DNS_VIP}|127.0.0.1" /etc/resolv.conf | tee /etc/coredns/resolv.conf
-      NUM_DNS_MEMBERS=$(grep -A 5 'controlPlane' /opt/openshift/manifests/cluster-config.yaml | awk '/replicas/ {print $2}')
-      export API_VIP DOMAIN NAME NUM_DNS_MEMBERS
-      /usr/libexec/platform-python -c "from __future__ import print_function
-      import os
-      with open('/etc/kubernetes/static-pod-resources/Corefile.tmpl', 'r') as f:
-          content = f.read()
-      with open('/etc/coredns/Corefile', 'w') as dest:
-          print(os.path.expandvars(content), file=dest)"
+    - runtimecfg
+    - render
+    - "/etc/kubernetes/kubeconfig"
+    - "--api-vip"
+    - "{{ .Infra.Status.PlatformStatus.BareMetal.APIServerInternalIP }}"
+    - "--dns-vip"
+    - "{{ .Infra.Status.PlatformStatus.BareMetal.NodeDNSIP }}"
+    - "--ingress-vip"
+    - "{{ .Infra.Status.PlatformStatus.BareMetal.IngressIP }}"
+    - "/config"
+    - "--out-dir"
+    - "/etc/coredns"
+    - "--cluster-config"
+    - "/etc/openshift/manifests/cluster-config.yaml"
     resources: {}
     volumeMounts:
+    - name: kubeconfig
+      mountPath: "/etc/kubernetes/kubeconfig"
     - name: resource-dir
-      mountPath: "/etc/kubernetes/static-pod-resources"
+      mountPath: "/config"
     - name: conf-dir
       mountPath: "/etc/coredns"
     - name: manifests
       mountPath: "/opt/openshift/manifests"
+    imagePullPolicy: IfNotPresent
   containers:
   - name: coredns
     securityContext:
       privileged: true
-    image: quay.io/openshift-metal3/coredns-mdns:latest
+    image: {{ .Images.corednsImage }}
     args:
     - "--conf"
     - "/etc/coredns/Corefile"
@@ -68,6 +65,25 @@ spec:
     volumeMounts:
     - name: conf-dir
       mountPath: "/etc/coredns"
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+        scheme: HTTP
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+      timeoutSeconds: 10
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+        scheme: HTTP
+      initialDelaySeconds: 60
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 5
     terminationMessagePolicy: FallbackToLogsOnError
   hostNetwork: true
   tolerations:

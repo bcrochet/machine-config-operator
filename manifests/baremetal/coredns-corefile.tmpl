@@ -1,12 +1,12 @@
 . {
     errors
     health
-    mdns $DOMAIN $NUM_DNS_MEMBERS $NAME
-    forward . /etc/coredns/resolv.conf
+    mdns {{ .Infra.Status.EtcdDiscoveryDomain }} {{`{{.Cluster.MasterAmount}}`}} {{`{{.Cluster.Name}}`}}
+    forward . {{``{{- range $upstream := .DNSUpstreams}} {{$upstream}}{{- end}}`}}
     cache 30
     reload
     hosts /etc/coredns/api-int.hosts $DOMAIN {
-        $API_VIP api-int.$DOMAIN
+        {{ .Infra.Status.PlatformStatus.BareMetal.ApiServerInternalIP }} api-int.{{ .Infra.Status.EtcdDiscoveryDomain }}
         fallthrough
     }
 }
