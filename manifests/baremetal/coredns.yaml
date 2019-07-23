@@ -23,7 +23,7 @@ spec:
       path: "/opt/openshift/manifests"
   initContainers:
   - name: render-config
-    image: {{ .Images.baremetalRuntimeCfgImage }}
+    image: {{ .Images.BaremetalRuntimeCfgBootstrap }}
     command:
     - runtimecfg
     - render
@@ -38,7 +38,7 @@ spec:
     - "--out-dir"
     - "/etc/coredns"
     - "--cluster-config"
-    - "/etc/openshift/manifests/cluster-config.yaml"
+    - "/opt/openshift/manifests/cluster-config.yaml"
     resources: {}
     volumeMounts:
     - name: kubeconfig
@@ -54,7 +54,7 @@ spec:
   - name: coredns
     securityContext:
       privileged: true
-    image: {{ .Images.corednsImage }}
+    image: {{ .Images.CorednsBootstrap }}
     args:
     - "--conf"
     - "/etc/coredns/Corefile"

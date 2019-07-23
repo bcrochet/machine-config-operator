@@ -79,12 +79,12 @@ func (fi bindataFileInfo) Sys() interface{} {
 var _manifestsBaremetalCorednsCorefileTmpl = []byte(`. {
     errors
     health
-    mdns $DOMAIN $NUM_DNS_MEMBERS $NAME
-    forward . /etc/coredns/resolv.conf
+    mdns {{ .Infra.Status.EtcdDiscoveryDomain }} {{`+"`"+`{{.Cluster.MasterAmount}}`+"`"+`}} {{`+"`"+`{{.Cluster.Name}}`+"`"+`}}
+    forward . {{`+"`"+`{{- range $upstream := .DNSUpstreams}} {{$upstream}}{{- end}}`+"`"+`}}
     cache 30
     reload
     hosts /etc/coredns/api-int.hosts $DOMAIN {
-        $API_VIP api-int.$DOMAIN
+        {{ .Infra.Status.PlatformStatus.BareMetal.APIServerInternalIP }} api-int.{{ .Infra.Status.EtcdDiscoveryDomain }}
         fallthrough
     }
 }
@@ -129,42 +129,39 @@ spec:
     hostPath:
       path: "/opt/openshift/manifests"
   initContainers:
-  - name: render-corefile
-    image: quay.io/openshift/origin-node:latest
+  - name: render-config
+    image: {{ .Images.BaremetalRuntimeCfgBootstrap }}
     command:
-    - "/bin/bash"
-    - "-c"
-    - |
-      #/bin/bash
-      set -ex
-      API_DNS="$(awk -F[/:] '/apiServerURL/ {print $5}' /opt/openshift/manifests/cluster-infrastructure-02-config.yml)"
-      DOMAIN="${API_DNS#*.}"
-      read -r -d '.' -a CLUSTER_ARR <<< "$DOMAIN"
-      NAME=${CLUSTER_ARR[0]}
-      API_VIP="$(dig +noall +answer "$API_DNS" | awk '{print $NF}')"
-      DNS_VIP="$(dig +noall +answer "ns1.${DOMAIN}" | awk '{print $NF}')"
-      grep -Ev "${DNS_VIP}|127.0.0.1" /etc/resolv.conf | tee /etc/coredns/resolv.conf
-      NUM_DNS_MEMBERS=$(grep -A 5 'controlPlane' /opt/openshift/manifests/cluster-config.yaml | awk '/replicas/ {print $2}')
-      export API_VIP DOMAIN NAME NUM_DNS_MEMBERS
-      /usr/libexec/platform-python -c "from __future__ import print_function
-      import os
-      with open('/etc/kubernetes/static-pod-resources/Corefile.tmpl', 'r') as f:
-          content = f.read()
-      with open('/etc/coredns/Corefile', 'w') as dest:
-          print(os.path.expandvars(content), file=dest)"
+    - runtimecfg
+    - render
+    - "/etc/kubernetes/kubeconfig"
+    - "--api-vip"
+    - "{{ .Infra.Status.PlatformStatus.BareMetal.APIServerInternalIP }}"
+    - "--dns-vip"
+    - "{{ .Infra.Status.PlatformStatus.BareMetal.NodeDNSIP }}"
+    - "--ingress-vip"
+    - "{{ .Infra.Status.PlatformStatus.BareMetal.IngressIP }}"
+    - "/config"
+    - "--out-dir"
+    - "/etc/coredns"
+    - "--cluster-config"
+    - "/opt/openshift/manifests/cluster-config.yaml"
     resources: {}
     volumeMounts:
+    - name: kubeconfig
+      mountPath: "/etc/kubernetes/kubeconfig"
     - name: resource-dir
-      mountPath: "/etc/kubernetes/static-pod-resources"
+      mountPath: "/config"
     - name: conf-dir
       mountPath: "/etc/coredns"
     - name: manifests
       mountPath: "/opt/openshift/manifests"
+    imagePullPolicy: IfNotPresent
   containers:
   - name: coredns
     securityContext:
       privileged: true
-    image: quay.io/openshift-metal3/coredns-mdns:latest
+    image: {{ .Images.CorednsBootstrap }}
     args:
     - "--conf"
     - "/etc/coredns/Corefile"
@@ -175,6 +172,25 @@ spec:
     volumeMounts:
     - name: conf-dir
       mountPath: "/etc/coredns"
+    readinessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+        scheme: HTTP
+      initialDelaySeconds: 10
+      periodSeconds: 10
+      successThreshold: 1
+      failureThreshold: 3
+      timeoutSeconds: 10
+    livenessProbe:
+      httpGet:
+        path: /health
+        port: 8080
+        scheme: HTTP
+      initialDelaySeconds: 60
+      timeoutSeconds: 5
+      successThreshold: 1
+      failureThreshold: 5
     terminationMessagePolicy: FallbackToLogsOnError
   hostNetwork: true
   tolerations:
@@ -204,33 +220,33 @@ var _manifestsBaremetalKeepalivedConfTmpl = []byte(`# Configuration template for
 # For more information, see installer/data/data/bootstrap/baremetal/README.md
 # in the installer repo.
 
-vrrp_instance ${CLUSTER_NAME}_API {
+vrrp_instance {{`+"`"+`{{.Cluster.Name}}`+"`"+`}}_API {
     state BACKUP
-    interface ${INTERFACE}
-    virtual_router_id ${API_VRID}
+    interface {{`+"`"+`{{.VRRPInterface}}`+"`"+`}}
+    virtual_router_id {{`+"`"+`{{.Cluster.APIVirtualRouterID }}`+"`"+`}}
     priority 50
     advert_int 1
     authentication {
         auth_type PASS
-        auth_pass ${CLUSTER_NAME}_api_vip
+        auth_pass {{`+"`"+`{{.Cluster.Name}}`+"`"+`}}_api_vip
     }
     virtual_ipaddress {
-        ${API_VIP}/${NET_MASK}
+        {{`+"`"+`{{ .Cluster.APIVIP }}`+"`"+`}}/{{`+"`"+`{{ .Cluster.VIPNetmask }}`+"`"+`}}
     }
 }
 
-vrrp_instance ${CLUSTER_NAME}_DNS {
+vrrp_instance {{`+"`"+`{{.Cluster.Name}}`+"`"+`}}_DNS {
     state MASTER
-    interface ${INTERFACE}
-    virtual_router_id ${DNS_VRID}
+    interface {{`+"`"+`{{.VRRPInterface}}`+"`"+`}}
+    virtual_router_id {{`+"`"+`{{.Cluster.DNSVirtualRouterID }}`+"`"+`}}
     priority 140
     advert_int 1
     authentication {
         auth_type PASS
-        auth_pass ${CLUSTER_NAME}_dns_vip
+        auth_pass {{`+"`"+`{{.Cluster.Name}}`+"`"+`}}_dns_vip
     }
     virtual_ipaddress {
-        ${DNS_VIP}/${NET_MASK}
+        {{`+"`"+`{{ .Cluster.DNSVIP }}`+"`"+`}}/{{`+"`"+`{{ .Cluster.VIPNetmask }}`+"`"+`}}
     }
 }
 `)
@@ -268,70 +284,38 @@ spec:
   - name: kubeconfig
     hostPath:
       path: "/etc/kubernetes/kubeconfig"
-  - name: get-vip-subnet-cidr
-    hostPath:
-      path: "/usr/local/bin/get_vip_subnet_cidr"
-  - name: fletcher8
-    hostPath:
-      path: "/usr/local/bin/fletcher8"
   - name: conf-dir
     empty-dir: {}
-  - name: manifests
-    hostPath:
-      path: "/opt/openshift/manifests"
   initContainers:
-  - name: render-keepalived-conf
-    image: quay.io/openshift/origin-node:latest
+  - name: render-config
+    image: {{ .Images.BaremetalRuntimeCfgBootstrap }}
     command:
-    - "/bin/bash"
-    - "-c"
-    - |
-      #/bin/bash
-      set -ex
-      API_DNS="$(awk -F[/:] '/apiServerURL/ {print $5}' /opt/openshift/manifests/cluster-infrastructure-02-config.yml)"
-      CLUSTER_NAME="$(awk -F. '{print $2}' <<< "$API_DNS")"
-      API_VIP="$(dig +noall +answer "$API_DNS" | awk '{print $NF}')"
-      IFACE_CIDRS="$(ip addr show | grep -v "scope host" | grep -Po 'inet \K[\d.]+/[\d.]+' | xargs)"
-      SUBNET_CIDR="$(/usr/local/bin/get_vip_subnet_cidr "$API_VIP" "$IFACE_CIDRS")"
-      NET_MASK="$(echo "$SUBNET_CIDR" | cut -d "/" -f 2)"
-      INTERFACE="$(ip -o addr show to "$SUBNET_CIDR" | head -n 1 | awk '{print $2}')"
-      CLUSTER_DOMAIN="${API_DNS#*.}"
-      DNS_VIP="$(dig +noall +answer "ns1.${CLUSTER_DOMAIN}" | awk '{print $NF}')"
-      # Virtual Router IDs. They must be different and 8 bit in length
-      API_VRID=$(/usr/local/bin/fletcher8 "$CLUSTER_NAME-api")
-      DNS_VRID=$(/usr/local/bin/fletcher8 "$CLUSTER_NAME-dns")
-      export API_VIP
-      export CLUSTER_NAME
-      export INTERFACE
-      export DNS_VIP
-      export API_VRID
-      export DNS_VRID
-      export NET_MASK
-      envsubst < /etc/keepalived/keepalived.conf.tmpl | tee /etc/keepalived/keepalived.conf
-      /usr/libexec/platform-python -c "from __future__ import print_function
-      import os
-      with open('/etc/kubernetes/static-pod-resources/keepalived.conf.tmpl', 'r') as f:
-          content = f.read()
-      with open('/etc/keepalived/keepalived.conf', 'w') as dest:
-          print(os.path.expandvars(content), file=dest)"
+    - runtimecfg
+    - render
+    - "/etc/kubernetes/kubeconfig"
+    - "--api-vip"
+    - "{{ .Infra.Status.PlatformStatus.BareMetal.APIServerInternalIP }}"
+    - "--dns-vip"
+    - "{{ .Infra.Status.PlatformStatus.BareMetal.NodeDNSIP }}"
+    - "--ingress-vip"
+    - "{{ .Infra.Status.PlatformStatus.BareMetal.IngressIP }}"
+    - "/config"
+    - "--out-dir"
+    - "/etc/keepalived"
     resources: {}
     volumeMounts:
     - name: resource-dir
-      mountPath: "/etc/kubernetes/static-pod-resources"
+      mountPath: "/config"
+    - name: kubeconfig
+      mountPath: "/etc/kubernetes/kubeconfig"
     - name: conf-dir
       mountPath: "/etc/keepalived"
-    - name: get-vip-subnet-cidr
-      mountPath: "/usr/local/bin/get_vip_subnet_cidr"
-    - name: fletcher8
-      mountPath: "/usr/local/bin/fletcher8"
-    - name: manifests
-      mountPath: "/opt/openshift/manifests"
     imagePullPolicy: IfNotPresent
   containers:
   - name: keepalived
     securityContext:
       privileged: true
-    image: quay.io/celebdor/keepalived:latest
+    image: {{ .Images.KeepalivedBootstrap }}
     command:
     - /usr/sbin/keepalived
     args:

@@ -2,11 +2,11 @@
     errors
     health
     mdns {{ .Infra.Status.EtcdDiscoveryDomain }} {{`{{.Cluster.MasterAmount}}`}} {{`{{.Cluster.Name}}`}}
-    forward . {{``{{- range $upstream := .DNSUpstreams}} {{$upstream}}{{- end}}`}}
+    forward . {{`{{- range $upstream := .DNSUpstreams}} {{$upstream}}{{- end}}`}}
     cache 30
     reload
     hosts /etc/coredns/api-int.hosts $DOMAIN {
-        {{ .Infra.Status.PlatformStatus.BareMetal.ApiServerInternalIP }} api-int.{{ .Infra.Status.EtcdDiscoveryDomain }}
+        {{ .Infra.Status.PlatformStatus.BareMetal.APIServerInternalIP }} api-int.{{ .Infra.Status.EtcdDiscoveryDomain }}
         fallthrough
     }
 }
