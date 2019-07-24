@@ -163,6 +163,26 @@ func RenderBootstrap(
 		name:     "manifests/baremetal/keepalived.conf.tmpl",
 		filename: "static-pod-resources/keepalived/keepalived.conf.tmpl",
 	}}
+	baremetalManifests := []struct {
+		name     string
+		data     []byte
+		filename string
+	}{{
+		name:     "manifests/baremetal/coredns.yaml",
+		filename: "manifests/coredns.yaml",
+	}, {
+		name:     "manifests/baremetal/coredns-corefile.tmpl",
+		filename: "static-pod-resources/coredns/Corefile.tmpl",
+	}, {
+		name:     "manifests/baremetal/keepalived.yaml",
+		filename: "manifests/keepalived.yaml",
+	}, {
+		name:     "manifests/baremetal/keepalived.conf.tmpl",
+		filename: "static-pod-resources/keepalived/keepalived.conf.tmpl",
+	}}
+	if infra.Status.PlatformStatus.Type == configv1.BareMetalPlatformType {
+		manifests = append(manifests, baremetalManifests...)
+	}
 	for _, m := range manifests {
 		var b []byte
 		var err error
