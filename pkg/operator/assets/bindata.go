@@ -119,7 +119,7 @@ kind: Pod
 apiVersion: v1
 metadata:
   name: coredns
-  namespace: {{ .TargetNamespace }}
+  namespace: openshift-kni-infra
   creationTimestamp:
   deletionGracePeriodSeconds: 65
   labels:
@@ -280,7 +280,7 @@ kind: Pod
 apiVersion: v1
 metadata:
   name: keepalived
-  namespace: {{ .TargetNamespace }}
+  namespace: openshift-kni-infra
   creationTimestamp:
   deletionGracePeriodSeconds: 65
   labels:
