@@ -1,0 +1,10 @@
+filesystem: "root"
+mode: 0644
+path: "/etc/sysconfig/network-scripts/ifcfg-ens3f1"
+contents:
+  inline: |
+    DEVICE=ens3f1
+    BOOTPROTO=none
+    ONBOOT=yes
+    MASTER=bond1
+    SLAVE=yes

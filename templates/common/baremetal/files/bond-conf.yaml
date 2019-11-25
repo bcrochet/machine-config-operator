@@ -1,0 +1,6 @@
+filesystem: "root"
+mode: 0644
+path: "/etc/modprobe.d/bond.conf"
+contents:
+  inline: |
+    alias bond[0-9] bonding

@@ -1,0 +1,9 @@
+filesystem: "root"
+mode: 0644
+path: "/etc/sysconfig/network-scripts/ifcfg-bond1"
+contents:
+  inline: |
+    DEVICE=bond1
+    ONBOOT=yes
+    BOOTPROTO=none
+    BONDING_OPTS="mode=4 miimon=100"

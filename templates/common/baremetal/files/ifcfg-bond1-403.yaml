@@ -1,0 +1,9 @@
+filesystem: "root"
+mode: 0644
+path: "/etc/sysconfig/network-scripts/ifcfg-bond1.403"
+contents:
+  inline: |
+    DEVICE=bond1.403
+    BOOTPROTO=dhcp
+    ONBOOT=yes
+    VLAN=yes
