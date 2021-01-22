@@ -1,0 +1,22 @@
+name: rename-nm-connections.service
+enabled: true
+contents: |
+  [Unit]
+  Description=Renames NetworkManager connections to make them unique
+  # Removal of this file signals firstboot completion
+  ConditionPathExists=!/etc/ignition-machine-config-encapsulated.json
+  # This service is used to move a physical NIC into OVS and reconfigure OVS to use the host IP
+  Requires=network.service
+  Wants=NetworkManager-wait-online.service
+  After=NetworkManager-wait-online.service network.service
+  Before=network-online.target kubelet.service crio.service node-valid-hostname.service ovs-configuration.service
+
+  [Service]
+  # Need oneshot to delay kubelet
+  Type=oneshot
+  ExecStart=/usr/local/bin/rename-nm-connections.sh
+  StandardOutput=journal+console
+  StandardError=journal+console
+
+  [Install]
+  WantedBy=network-online.target

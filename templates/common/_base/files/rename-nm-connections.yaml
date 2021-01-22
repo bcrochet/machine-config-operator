@@ -1,0 +1,18 @@
+mode: 0755
+path: "/usr/local/bin/rename-nm-connections.sh"
+contents:
+  inline: |
+    #!/bin/bash
+    set -eux
+
+    # Renames NetworkManager connections away from Wired Connection, and makes
+    # them unique.
+
+    NM_CONN_PATH="/etc/NetworkManager/system-connections"
+    ifaces=$(nmcli -t --fields DEVICE conn show --active)
+
+    for iface in ${ifaces}; do
+      nmcli connection add type ethernet ifname ${iface} con-name eth-${iface}
+      nmcli connection up eth-${iface}
+      cp ${NM_CONN_PATH}-merged/eth-${iface}.nmconnection ${NM_CONN_PATH}
+    done
